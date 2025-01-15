@@ -13,28 +13,53 @@ VIDEO_PATH = "C:/Users/ism/Videos/2024-07-21 21-17-45.mp4"
 
 class Filter:
     def __init__(self):
+        """
+        Initialize filter.
+        """
         self.input = SimpleQueue()
         self.outputs = []
         self.thread = None
         # simple boolean is not harmful in this threading scenario
         self.should_stop = False
 
-    def setOutputs(self, outputs):
+    def setOutputs(self, outputs: List[SimpleQueue[Any]]):
+        """
+        Set output queues.
+        :param outputs: list of queues.
+        :return:
+        """
         self.outputs = outputs
 
     def start(self):
+        """
+        Start filter process.
+        :return:
+        """
         self.should_stop = False
-        self.thread = Thread(target=self.runner)
+        self.thread = Thread(target=self._runner)
         self.thread.start()
 
-    def isRunning(self):
+    def isRunning(self) -> bool:
+        """
+        Check if filter is running.
+        :return: True or False.
+        """
         return self.thread.is_alive()
 
     def stop(self):
+        """
+        Stop filter process.
+        :return:
+        """
         self.should_stop = True
         self.thread.join()
 
-    def runner(self):
+    def _runner(self):
+        """
+        Function which runs in the filter process
+        and invokes process function when data is passed in.
+        :return:
+        """
         while not self.should_stop:
             try:
                 data = self.input.get(block=True, timeout=0.1)
@@ -45,18 +70,35 @@ class Filter:
                 self.should_stop = True
                 break
 
-    def process(self, data):
+    def process(self, data: Any) -> bool:
+        """
+        Base process function that passes data onto next filter.
+        Must be called at the end of all derived process functions.
+        :param data: Any data to process.
+        :return: Bool whether a filter should continue running.
+        """
         for output in self.outputs:
             output.put(data)
         return True
 
 
 class Pipeline:
+    """
+    Pipeline aggregates filters and connects them with queues
+    as specified by string notation.
+    """
     def __init__(self, pipeline: Dict[str, Tuple[Filter, List[str]]]):
+        """
+        Initialize pipeline.
+        :param pipeline: dict with names of filters as keys
+        and tuples of (filter, list of output names) as values.
+        Output names represent other filters and if unique
+        - a brand-new output queue that can be accessed by getSource.
+        """
         self.pipeline = pipeline
         self.outputs = {}
         for f, out in self.pipeline.values():
-            outputs = [None] * len(out)
+            outputs: List[SimpleQueue[Any]|None] = [None] * len(out)
             for i, el in enumerate(out):
                 if el not in self.pipeline:
                     self.outputs[el] = SimpleQueue()
@@ -66,20 +108,43 @@ class Pipeline:
             f.setOutputs(outputs)
 
     def start(self):
+        """
+        Start pipeline.
+        :return:
+        """
         for f, _ in self.pipeline.values():
             f.start()
 
-    def isRunning(self, fil):
+    def isRunning(self, fil: str) -> bool:
+        """
+        Check if pipeline is running.
+        :param fil: filter name.
+        :return: True if pipeline is running.
+        """
         return self.pipeline[fil][0].isRunning()
 
     def stop(self):
+        """
+        Stop pipeline.
+        :return:
+        """
         for f, _ in self.pipeline.values():
             f.stop()
 
-    def getOutput(self, key):
+    def getSource(self, key: str) -> SimpleQueue[Any]:
+        """
+        Get predefined (by unique outputs) source by name.
+        :param key: name of the output.
+        :return: queue.
+        """
         return self.outputs[key]
 
-    def getSink(self, fil: str):
+    def getSink(self, fil: str) -> SimpleQueue[Any]:
+        """
+        Get input queue of the filter.
+        :param fil: filter name.
+        :return: queue.
+        """
         return self.pipeline[fil][0].input
 
 
@@ -147,7 +212,7 @@ class DisplayFilter(Filter):
         cv2.waitKey(1)
         if not cv2.getWindowProperty(self.win_name, cv2.WND_PROP_VISIBLE):
             return False
-        # probably can send some metadata, window size to then pass it to VideoSource
+        # probably can send some metadata/window size to then pass it to VideoSource
         return super().process(1)
 
 
