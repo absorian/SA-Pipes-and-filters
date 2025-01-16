@@ -32,10 +32,12 @@ class Filter:
 
     def start(self):
         """
-        Start filter process.
+        Start filter process. Cannot be called while already running.
         :return:
         """
         self.should_stop = False
+        if self.thread is not None and self.thread.is_alive():
+            raise Exception("The filter is already running!")
         self.thread = Thread(target=self._runner)
         self.thread.start()
 
@@ -52,7 +54,9 @@ class Filter:
         :return:
         """
         self.should_stop = True
-        self.thread.join()
+        if self.thread is not None:
+            self.thread.join()
+        self.thread = None
 
     def _runner(self):
         """
