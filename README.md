@@ -2,6 +2,7 @@
 The project contains the implementation of mentioned pattern and an example use. Implementation is based on threading (`threading.Thread`) and queues (`queue.SimpleQueue`).
 ### The structure
 - Base class: **Filter**. Manages internal input and output pipes and filter's process.
+- Control class: **Pipeline**. Arranges filters and pipes between them, controls the state of filters, and provides endpoints to the user.
 - Main derived classes, that accept an image frame and apply the actual filter outputting the processed frame:
   - **PinkFilter**
   - **ShakingFilter**
